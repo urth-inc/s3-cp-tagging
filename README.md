@@ -93,8 +93,4 @@ make release
 
 ## License
 
-[License information here]
-
-## Contributing
-
-[Contributing guidelines here] 
+MIT License
