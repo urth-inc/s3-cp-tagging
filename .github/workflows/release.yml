@@ -18,6 +18,8 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Create Release
         id: create_release
@@ -37,36 +39,72 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
+        arch: [amd64, arm64]
         include:
           - os: ubuntu-latest
+            arch: amd64
             artifact_name: s3-cp-tagging
             asset_name: s3-cp-tagging-linux-amd64
+            goarch: amd64
+          - os: ubuntu-latest
+            arch: arm64
+            artifact_name: s3-cp-tagging
+            asset_name: s3-cp-tagging-linux-arm64
+            goarch: arm64
           - os: macos-latest
+            arch: amd64
             artifact_name: s3-cp-tagging
             asset_name: s3-cp-tagging-darwin-amd64
+            goarch: amd64
+          - os: macos-latest
+            arch: arm64
+            artifact_name: s3-cp-tagging
+            asset_name: s3-cp-tagging-darwin-arm64
+            goarch: arm64
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.22'
           check-latest: true
           cache: true
 
       - name: Build
-        run: |
-          make build
-          cd bin
-          tar czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
+        env:
+          GOARCH: ${{ matrix.goarch }}
+        run: make build
 
-      - name: Upload Release Asset
+      - name: Generate checksum
+        shell: bash
+        run: |
+          cd bin
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            shasum -a 256 ${{ matrix.artifact_name }} > ${{ matrix.asset_name }}.sha256
+          else
+            sha256sum ${{ matrix.artifact_name }} > ${{ matrix.asset_name }}.sha256
+          fi
+
+      - name: Upload Binary
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release.outputs.upload_url }}
-          asset_path: ./bin/${{ matrix.asset_name }}.tar.gz
-          asset_name: ${{ matrix.asset_name }}.tar.gz
-          asset_content_type: application/gzip 
+          asset_path: ./bin/${{ matrix.artifact_name }}
+          asset_name: ${{ matrix.asset_name }}
+          asset_content_type: application/octet-stream
+
+      - name: Upload SHA256
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: ./bin/${{ matrix.asset_name }}.sha256
+          asset_name: ${{ matrix.asset_name }}.sha256
+          asset_content_type: text/plain 
