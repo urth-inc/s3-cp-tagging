@@ -14,29 +14,6 @@ The official AWS CLI's `s3 cp` command does not support setting tags during the 
 - File filtering with exclude/include patterns (like AWS CLI)
 - Similar interface to AWS CLI's `s3 cp` command
 
-## Prerequisites
-
-- Go 1.24 or later
-- AWS credentials configured
-- Make (for building)
-
-## Installation
-
-### From Source
-
-1. Clone the repository:
-```bash
-git clone https://github.com/urth-inc/s3-cp-tagging.git
-cd s3-cp-tagging
-```
-
-2. Build the binary:
-```bash
-make build
-```
-
-The binary will be available in the `bin` directory.
-
 ## Usage
 
 ```bash
@@ -59,6 +36,29 @@ s3-cp-tagging ./dist s3://my-bucket --exclude "*" --include "*.js" --tagging "Ta
 - `--tagging`: The tag-set for the object. Must be formatted as: `"TagSet=[{Key=key1,Value=value1},{Key=key2,Value=value2}]"`
 - `--exclude`: Exclude files that match the specified pattern (can be specified multiple times)
 - `--include`: Don't exclude files that match the specified pattern (can be specified multiple times)
+
+## Prerequisites
+
+- Go 1.24 or later
+- AWS credentials configured
+- Make (for building)
+
+## Installation
+
+### From Source
+
+1. Clone the repository:
+```bash
+git clone https://github.com/urth-inc/s3-cp-tagging.git
+cd s3-cp-tagging
+```
+
+2. Build the binary:
+```bash
+make build
+```
+
+The binary will be available in the `bin` directory.
 
 ## Development
 
