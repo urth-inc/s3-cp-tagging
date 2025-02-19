@@ -57,7 +57,7 @@ jobs:
 
       - name: Build
         run: |
-          make release
+          make build
           cd bin
           tar czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
 
