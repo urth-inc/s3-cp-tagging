@@ -47,7 +47,53 @@ s3-cp-tagging ./dist s3://my-bucket --exclude "*" --include "*.js" --tagging "Ta
 
 ## Installation
 
-### From Source
+### Binary Installation (Recommended)
+
+1. Download the binary and checksum for your platform:
+
+**macOS**
+```bash
+# For Intel Mac (amd64)
+curl -L -o s3-cp-tagging https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-darwin-amd64
+curl -L -o s3-cp-tagging.sha256 https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-darwin-amd64.sha256
+
+# For Apple Silicon Mac (arm64)
+curl -L -o s3-cp-tagging https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-darwin-arm64
+curl -L -o s3-cp-tagging.sha256 https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-darwin-arm64.sha256
+```
+
+**Linux**
+```bash
+# For x86_64 (amd64)
+curl -L -o s3-cp-tagging https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-linux-amd64
+curl -L -o s3-cp-tagging.sha256 https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-linux-amd64.sha256
+
+# For ARM64
+curl -L -o s3-cp-tagging https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-linux-arm64
+curl -L -o s3-cp-tagging.sha256 https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-linux-arm64.sha256
+```
+
+2. Verify the checksum:
+```bash
+# On macOS
+shasum -a 256 -c s3-cp-tagging.sha256
+# On Linux
+sha256sum -c s3-cp-tagging.sha256
+```
+
+3. Make it executable and move to `/usr/local/bin`:
+```bash
+chmod +x s3-cp-tagging
+sudo mv s3-cp-tagging /usr/local/bin/
+rm s3-cp-tagging.sha256
+```
+
+4. Verify the installation:
+```bash
+s3-cp-tagging --version
+```
+
+### Build from Source
 
 1. Clone the repository:
 ```bash
