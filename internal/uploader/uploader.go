@@ -59,7 +59,99 @@ func (d *defaultConfigLoader) LoadDefaultConfig(ctx context.Context, optFns ...f
 }
 
 func (u *Uploader) UploadDirectory() error {
-	return filepath.Walk(u.cfg.SourcePath, u.uploadFile)
+	var firstErr error
+	walkErr := filepath.Walk(u.cfg.SourcePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		if err := u.uploadFile(path, info, nil); err != nil {
+			firstErr = err
+			return filepath.SkipAll // Stop walking entirely
+		}
+		return nil
+	})
+
+	if walkErr != nil && firstErr == nil {
+		return walkErr
+	}
+	return firstErr
+}
+
+func (u *Uploader) shouldIncludeFile(relPath string) bool {
+	// Convert path separators to forward slashes for consistent pattern matching
+	relPath = filepath.ToSlash(relPath)
+
+	// First, check if the file is explicitly included
+	for _, pattern := range u.cfg.Include {
+		pattern = filepath.ToSlash(pattern)
+		if matched, err := filepath.Match(pattern, relPath); err == nil && matched {
+			return true
+		}
+		// For non-directory patterns, try matching against the base name
+		if !strings.Contains(pattern, "/") {
+			if matched, err := filepath.Match(pattern, filepath.Base(relPath)); err == nil && matched {
+				return true
+			}
+		}
+	}
+
+	// Then, check if the file is excluded
+	for _, pattern := range u.cfg.Exclude {
+		pattern = filepath.ToSlash(pattern)
+		if pattern == "*" {
+			// Special case: "*" excludes everything unless explicitly included
+			if len(u.cfg.Include) > 0 {
+				return false
+			}
+		} else {
+			// Check if the file matches the exclude pattern
+			matched := false
+			if strings.Contains(pattern, "/") {
+				// For directory patterns, match against the full path
+				if m, err := filepath.Match(pattern, relPath); err == nil {
+					matched = m
+				}
+			} else {
+				// For non-directory patterns, match against both full path and base name
+				if m, err := filepath.Match(pattern, relPath); err == nil {
+					matched = m
+				}
+				if !matched {
+					if m, err := filepath.Match(pattern, filepath.Base(relPath)); err == nil {
+						matched = m
+					}
+				}
+			}
+
+			if matched {
+				// If the file is excluded, check if it's explicitly included
+				for _, includePattern := range u.cfg.Include {
+					includePattern = filepath.ToSlash(includePattern)
+					if m, err := filepath.Match(includePattern, relPath); err == nil && m {
+						return true
+					}
+					if !strings.Contains(includePattern, "/") {
+						if m, err := filepath.Match(includePattern, filepath.Base(relPath)); err == nil && m {
+							return true
+						}
+					}
+				}
+				return false
+			}
+		}
+	}
+
+	// If there are only include patterns and no exclude patterns, only include matched files
+	if len(u.cfg.Include) > 0 && len(u.cfg.Exclude) == 0 {
+		return false
+	}
+
+	// Otherwise, include the file
+	return true
 }
 
 func (u *Uploader) uploadFile(path string, info os.FileInfo, err error) error {
@@ -69,13 +161,14 @@ func (u *Uploader) uploadFile(path string, info os.FileInfo, err error) error {
 	if info.IsDir() {
 		return nil
 	}
-	if filepath.Ext(path) == ".map" {
-		return nil
-	}
 
 	relPath, err := filepath.Rel(u.cfg.SourcePath, path)
 	if err != nil {
 		return fmt.Errorf("failed to get relative path: %v", err)
+	}
+
+	if !u.shouldIncludeFile(relPath) {
+		return nil
 	}
 
 	file, err := os.Open(path)
@@ -119,4 +212,4 @@ func formatTags(tags []types.Tag) string {
 		tagPairs = append(tagPairs, fmt.Sprintf("%s=%s", *tag.Key, *tag.Value))
 	}
 	return strings.Join(tagPairs, "&")
-} 
+}

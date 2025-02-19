@@ -10,6 +10,8 @@ type Config struct {
 	SourcePath string
 	Profile    string
 	Tagging    string
+	Exclude    []string
+	Include    []string
 }
 
 type Tag struct {

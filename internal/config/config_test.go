@@ -14,8 +14,8 @@ func TestConfig_Validate(t *testing.T) {
 			name: "valid config",
 			cfg: Config{
 				SourcePath: "./testdata",
-				Bucket:    "test-bucket",
-				Tagging:   "TagSet=[{Key=version,Value=v1.0.0}]",
+				Bucket:     "test-bucket",
+				Tagging:    "TagSet=[{Key=version,Value=v1.0.0}]",
 			},
 			wantErr: false,
 		},
@@ -39,7 +39,7 @@ func TestConfig_Validate(t *testing.T) {
 			name: "missing tagging",
 			cfg: Config{
 				SourcePath: "./testdata",
-				Bucket:    "test-bucket",
+				Bucket:     "test-bucket",
 			},
 			wantErr: true,
 		},
@@ -47,8 +47,8 @@ func TestConfig_Validate(t *testing.T) {
 			name: "normalize s3:// prefix",
 			cfg: Config{
 				SourcePath: "./testdata",
-				Bucket:    "s3://test-bucket",
-				Tagging:   "TagSet=[{Key=version,Value=v1.0.0}]",
+				Bucket:     "s3://test-bucket",
+				Tagging:    "TagSet=[{Key=version,Value=v1.0.0}]",
 			},
 			wantErr: false,
 		},
@@ -160,4 +160,4 @@ func TestConfig_validateTagging(t *testing.T) {
 			}
 		})
 	}
-} 
+}

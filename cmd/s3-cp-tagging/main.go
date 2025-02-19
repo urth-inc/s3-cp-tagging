@@ -62,6 +62,8 @@ BuildDate: ` + BuildDate + "\n")
 
 	rootCmd.Flags().StringVar(&cfg.Profile, "profile", "", "Use a specific profile from your credential file")
 	rootCmd.Flags().StringVar(&cfg.Tagging, "tagging", "", `The tag-set for the object. The tag-set must be formatted as: "TagSet=[{Key=key1,Value=value1},{Key=key2,Value=value2}]"`)
+	rootCmd.Flags().StringArrayVar(&cfg.Exclude, "exclude", nil, "Exclude all files that match the specified pattern")
+	rootCmd.Flags().StringArrayVar(&cfg.Include, "include", nil, "Don't exclude files that match the specified pattern")
 
 	return rootCmd
 }

@@ -12,17 +12,22 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/urth-inc/s3-cp-tagging/internal/config"
 )
 
 // mockS3Client implements s3ClientAPI for testing
 type mockS3Client struct {
-	putObjectCalls int
-	shouldError    bool
+	uploadedFiles map[string]string // key: file path, value: tags
+	shouldError   bool
 }
 
 func (m *mockS3Client) PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
-	m.putObjectCalls++
+	if m.uploadedFiles == nil {
+		m.uploadedFiles = make(map[string]string)
+	}
+	m.uploadedFiles[*params.Key] = *params.Tagging
+
 	if m.shouldError {
 		return nil, errors.New("mock error")
 	}
@@ -79,7 +84,9 @@ func TestUploader_UploadDirectory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockClient := &mockS3Client{shouldError: tt.shouldError}
+			mockClient := &mockS3Client{
+				shouldError: tt.shouldError,
+			}
 			u := &Uploader{
 				client: mockClient,
 				cfg:    tt.cfg,
@@ -90,8 +97,8 @@ func TestUploader_UploadDirectory(t *testing.T) {
 				t.Errorf("UploadDirectory() error = %v, wantErr %v", err, tt.shouldError)
 			}
 
-			if mockClient.putObjectCalls != tt.wantCalls {
-				t.Errorf("UploadDirectory() calls = %v, want %v", mockClient.putObjectCalls, tt.wantCalls)
+			if len(mockClient.uploadedFiles) != tt.wantCalls {
+				t.Errorf("UploadDirectory() calls = %v, want %v", len(mockClient.uploadedFiles), tt.wantCalls)
 			}
 		})
 	}
@@ -132,12 +139,14 @@ func TestFormatTags(t *testing.T) {
 
 // mockConfigLoader implements configLoader for testing
 type mockConfigLoader struct {
-	cfg aws.Config
-	err error
+	mockError error
 }
 
 func (m *mockConfigLoader) LoadDefaultConfig(ctx context.Context, optFns ...func(*awsconfig.LoadOptions) error) (aws.Config, error) {
-	return m.cfg, m.err
+	if m.mockError != nil {
+		return aws.Config{}, m.mockError
+	}
+	return aws.Config{}, nil
 }
 
 func TestNew(t *testing.T) {
@@ -181,8 +190,7 @@ func TestNew(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockLoader := &mockConfigLoader{
-				cfg: aws.Config{},
-				err: tt.mockError,
+				mockError: tt.mockError,
 			}
 
 			got, err := NewWithLoader(tt.cfg, mockLoader)
@@ -198,7 +206,14 @@ func TestNew(t *testing.T) {
 }
 
 func TestUploader_uploadFile(t *testing.T) {
-	// Add test cases for file upload
+	// Create a temporary test file
+	tmpFile, err := os.CreateTemp("", "test.map")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+	defer tmpFile.Close()
+
 	tests := []struct {
 		name        string
 		path        string
@@ -215,7 +230,7 @@ func TestUploader_uploadFile(t *testing.T) {
 		},
 		{
 			name:        "map file should be skipped",
-			path:        "test.map",
+			path:        tmpFile.Name(),
 			info:        &mockFileInfo{isDir: false},
 			shouldError: false,
 			wantErr:     false,
@@ -231,12 +246,14 @@ func TestUploader_uploadFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockClient := &mockS3Client{shouldError: tt.shouldError}
+			mockClient := &mockS3Client{
+				shouldError: tt.shouldError,
+			}
 			u := &Uploader{
 				client: mockClient,
 				cfg: &config.Config{
 					Bucket:     "test-bucket",
-					SourcePath: "test-source",
+					SourcePath: filepath.Dir(tt.path),
 					Tagging:    "TagSet=[{Key=version,Value=v1.0.0}]",
 				},
 			}
@@ -255,8 +272,141 @@ type mockFileInfo struct {
 }
 
 func (m *mockFileInfo) Name() string       { return "mock" }
-func (m *mockFileInfo) Size() int64       { return 0 }
-func (m *mockFileInfo) Mode() os.FileMode { return 0 }
+func (m *mockFileInfo) Size() int64        { return 0 }
+func (m *mockFileInfo) Mode() os.FileMode  { return 0 }
 func (m *mockFileInfo) ModTime() time.Time { return time.Time{} }
-func (m *mockFileInfo) IsDir() bool       { return m.isDir }
-func (m *mockFileInfo) Sys() interface{}  { return nil } 
+func (m *mockFileInfo) IsDir() bool        { return m.isDir }
+func (m *mockFileInfo) Sys() interface{}   { return nil }
+
+func TestUploadWithExcludeIncludePatterns(t *testing.T) {
+	// Create temporary test directory
+	tmpDir, err := os.MkdirTemp("", "s3-cp-tagging-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create test files
+	files := []string{
+		"file1.txt",
+		"file2.js",
+		"file3.map",
+		"subfolder/file4.js",
+		"subfolder/file5.map",
+		"subfolder/file6.txt",
+	}
+
+	for _, file := range files {
+		path := filepath.Join(tmpDir, file)
+		err := os.MkdirAll(filepath.Dir(path), 0755)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = os.WriteFile(path, []byte("test content"), 0644)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	tests := []struct {
+		name          string
+		exclude       []string
+		include       []string
+		expectedFiles []string
+		excludedFiles []string
+	}{
+		{
+			name:    "exclude .map files",
+			exclude: []string{"*.map"},
+			include: nil,
+			expectedFiles: []string{
+				"file1.txt",
+				"file2.js",
+				"subfolder/file4.js",
+				"subfolder/file6.txt",
+			},
+			excludedFiles: []string{
+				"file3.map",
+				"subfolder/file5.map",
+			},
+		},
+		{
+			name:    "exclude all but .js files",
+			exclude: []string{"*"},
+			include: []string{"*.js"},
+			expectedFiles: []string{
+				"file2.js",
+				"subfolder/file4.js",
+			},
+			excludedFiles: []string{
+				"file1.txt",
+				"file3.map",
+				"subfolder/file5.map",
+				"subfolder/file6.txt",
+			},
+		},
+		{
+			name:    "exclude files in subfolder",
+			exclude: []string{"subfolder/*"},
+			include: nil,
+			expectedFiles: []string{
+				"file1.txt",
+				"file2.js",
+				"file3.map",
+			},
+			excludedFiles: []string{
+				"subfolder/file4.js",
+				"subfolder/file5.map",
+				"subfolder/file6.txt",
+			},
+		},
+		{
+			name:    "exclude txt files but include specific one",
+			exclude: []string{"*.txt"},
+			include: []string{"file1.txt"},
+			expectedFiles: []string{
+				"file1.txt",
+				"file2.js",
+				"file3.map",
+				"subfolder/file4.js",
+				"subfolder/file5.map",
+			},
+			excludedFiles: []string{
+				"subfolder/file6.txt",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &mockS3Client{}
+			cfg := &config.Config{
+				Bucket:     "test-bucket",
+				SourcePath: tmpDir,
+				Tagging:    `TagSet=[{Key=test,Value=value}]`,
+				Exclude:    tt.exclude,
+				Include:    tt.include,
+			}
+
+			u := &Uploader{
+				client: mockClient,
+				cfg:    cfg,
+			}
+
+			err := u.UploadDirectory()
+			assert.NoError(t, err)
+
+			// Verify expected files were uploaded
+			for _, file := range tt.expectedFiles {
+				_, exists := mockClient.uploadedFiles[file]
+				assert.True(t, exists, "Expected file %s to be uploaded", file)
+			}
+
+			// Verify excluded files were not uploaded
+			for _, file := range tt.excludedFiles {
+				_, exists := mockClient.uploadedFiles[file]
+				assert.False(t, exists, "Expected file %s to be excluded", file)
+			}
+		})
+	}
+}
