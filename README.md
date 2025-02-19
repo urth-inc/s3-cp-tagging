@@ -1,5 +1,7 @@
 # s3-cp-tagging
 
+[![Test](https://github.com/urth-inc/s3-cp-tagging/actions/workflows/test.yml/badge.svg)](https://github.com/urth-inc/s3-cp-tagging/actions/workflows/test.yml)
+
 A command-line tool to copy local files to Amazon S3 with tagging support. Similar to the AWS CLI's `s3 cp` command but with the ability to add tags during upload.
 
 ## Why this tool?
