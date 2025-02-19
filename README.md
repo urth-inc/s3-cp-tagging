@@ -4,17 +4,23 @@
 
 A command-line tool to copy local files to Amazon S3 with tagging support. Similar to the AWS CLI's `s3 cp` command but with the ability to add tags during upload.
 
+---
+
 ## Why this tool?
 
 The official AWS CLI's `s3 cp` command does not support setting tags during the upload operation. While AWS S3 supports object tagging, you would need to make a separate API call to add tags after uploading files. This tool combines these operations into a single command, making it more efficient to upload files with tags in one step.
 
+---
+
 ## Features
 
-- Upload files and directories to S3 with tags
-- AWS profile support
-- Recursive directory upload
-- File filtering with exclude/include patterns (like AWS CLI)
-- Similar interface to AWS CLI's `s3 cp` command
+- Upload files and directories to S3 with tags  
+- AWS profile support  
+- Recursive directory upload  
+- File filtering with exclude/include patterns (like AWS CLI)  
+- Similar interface to AWS CLI's `s3 cp` command  
+
+---
 
 ## Usage
 
@@ -34,16 +40,20 @@ s3-cp-tagging ./dist s3://my-bucket --exclude "*" --include "*.js" --tagging "Ta
 
 ### Options
 
-- `--profile`: Use a specific profile from your AWS credentials file
-- `--tagging`: The tag-set for the object. Must be formatted as: `"TagSet=[{Key=key1,Value=value1},{Key=key2,Value=value2}]"`
-- `--exclude`: Exclude files that match the specified pattern (can be specified multiple times)
-- `--include`: Don't exclude files that match the specified pattern (can be specified multiple times)
+- `--profile`: Use a specific profile from your AWS credentials file  
+- `--tagging`: The tag-set for the object. Must be formatted as: `"TagSet=[{Key=key1,Value=value1},{Key=key2,Value=value2}]"`  
+- `--exclude`: Exclude files that match the specified pattern (can be specified multiple times)  
+- `--include`: Don't exclude files that match the specified pattern (can be specified multiple times)  
+
+---
 
 ## Prerequisites
 
-- Go 1.24 or later
-- AWS credentials configured
-- Make (for building)
+- AWS credentials configured  
+- Go 1.24 or later (for building)  
+- Make (for building)  
+
+---
 
 ## Installation
 
@@ -51,37 +61,52 @@ s3-cp-tagging ./dist s3://my-bucket --exclude "*" --include "*.js" --tagging "Ta
 
 1. Download the binary and checksum for your platform:
 
-**macOS**
+**macOS**  
+For Intel Mac (amd64)
+
 ```bash
-# For Intel Mac (amd64)
 curl -L -o s3-cp-tagging https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-darwin-amd64
 curl -L -o s3-cp-tagging.sha256 https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-darwin-amd64.sha256
+```
 
-# For Apple Silicon Mac (arm64)
+For Apple Silicon Mac (arm64)
+
+```bash
 curl -L -o s3-cp-tagging https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-darwin-arm64
 curl -L -o s3-cp-tagging.sha256 https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-darwin-arm64.sha256
 ```
 
-**Linux**
+**Linux**  
+For x86_64 (amd64)
+
 ```bash
-# For x86_64 (amd64)
 curl -L -o s3-cp-tagging https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-linux-amd64
 curl -L -o s3-cp-tagging.sha256 https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-linux-amd64.sha256
+```
 
-# For ARM64
+For ARM64
+
+```bash
 curl -L -o s3-cp-tagging https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-linux-arm64
 curl -L -o s3-cp-tagging.sha256 https://github.com/urth-inc/s3-cp-tagging/releases/latest/download/s3-cp-tagging-linux-arm64.sha256
 ```
 
 2. Verify the checksum:
+
+For macOS
+
 ```bash
-# On macOS
 shasum -a 256 -c s3-cp-tagging.sha256
-# On Linux
+```
+
+For Linux
+
+```bash
 sha256sum -c s3-cp-tagging.sha256
 ```
 
-3. Make it executable and move to `/usr/local/bin`:
+3. Make it executable and move it to `/usr/local/bin`:
+
 ```bash
 chmod +x s3-cp-tagging
 sudo mv s3-cp-tagging /usr/local/bin/
@@ -89,40 +114,50 @@ rm s3-cp-tagging.sha256
 ```
 
 4. Verify the installation:
+
 ```bash
 s3-cp-tagging --version
 ```
 
+---
+
 ### Build from Source
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/urth-inc/s3-cp-tagging.git
 cd s3-cp-tagging
 ```
 
 2. Build the binary:
+
 ```bash
 make build
 ```
 
 The binary will be available in the `bin` directory.
 
+---
+
 ## Development
 
 ### Setup Development Environment
 
 1. Install dependencies:
+
 ```bash
 go mod download
 ```
 
 2. Run tests:
+
 ```bash
 make test
 ```
 
 3. Run tests with coverage:
+
 ```bash
 make coverage
 ```
@@ -130,14 +165,18 @@ make coverage
 ### Build
 
 - Build for development:
+
 ```bash
 make build
 ```
 
 - Build with version information:
+
 ```bash
 make release
 ```
+
+---
 
 ## License
 
